@@ -1,8 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-import time
-from PIL import Image, ImageTk
-import os
 
 class KnightTourSolver:
     def __init__(self, n, m):
@@ -56,15 +53,13 @@ class KnightTourApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Задача о ходе коня")
-        self.root.geometry("800x600")
+        self.root.geometry("600x500")
         
         self.n = 8
         self.m = 8
         self.start_x = 0
         self.start_y = 0
         self.solution = None
-        self.current_step = 0
-        self.animation_running = False
         
         self.setup_ui()
         
@@ -75,7 +70,7 @@ class KnightTourApp:
         
         # Input frame
         input_frame = ttk.LabelFrame(main_frame, text="Параметры доски", padding="10")
-        input_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        input_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         
         # Board size inputs
         ttk.Label(input_frame, text="Размер доски (n×m):").grid(row=0, column=0, sticky=tk.W)
@@ -97,43 +92,25 @@ class KnightTourApp:
         
         # Buttons frame
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=1, column=0, columnspan=2, pady=(0, 10))
+        button_frame.grid(row=1, column=0, pady=(0, 10))
         
         ttk.Button(button_frame, text="Найти решение", command=self.find_solution).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Показать анимацию", command=self.start_animation).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Сбросить", command=self.reset).pack(side=tk.LEFT)
-        
-        # Animation controls
-        control_frame = ttk.Frame(main_frame)
-        control_frame.grid(row=2, column=0, columnspan=2, pady=(0, 10))
-        
-        ttk.Button(control_frame, text="⏮️", command=self.first_step, width=3).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(control_frame, text="⏪", command=self.prev_step, width=3).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(control_frame, text="⏸️", command=self.pause_animation, width=3).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(control_frame, text="▶️", command=self.resume_animation, width=3).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(control_frame, text="⏩", command=self.next_step, width=3).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(control_frame, text="⏭️", command=self.last_step, width=3).pack(side=tk.LEFT)
-        
-        # Speed control
-        ttk.Label(control_frame, text="Скорость:").pack(side=tk.LEFT, padx=(20, 5))
-        self.speed_var = tk.DoubleVar(value=0.5)
-        ttk.Scale(control_frame, from_=0.1, to=2.0, variable=self.speed_var, 
-                 orient=tk.HORIZONTAL, length=100).pack(side=tk.LEFT)
+        ttk.Button(button_frame, text="Очистить", command=self.clear).pack(side=tk.LEFT)
         
         # Canvas for board
         self.canvas = tk.Canvas(main_frame, bg='white', width=500, height=400)
-        self.canvas.grid(row=3, column=0, columnspan=2, pady=(10, 0))
+        self.canvas.grid(row=2, column=0, pady=(10, 0))
         
         # Status bar
         self.status_var = tk.StringVar(value="Готов к работе")
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN)
-        status_bar.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
+        status_bar.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
         
         # Configure grid weights
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(3, weight=1)
+        main_frame.rowconfigure(2, weight=1)
         
     def find_solution(self):
         try:
@@ -152,13 +129,13 @@ class KnightTourApp:
             solver = KnightTourSolver(self.n, self.m)
             if solver.solve(self.start_x, self.start_y):
                 self.solution = solver.board
-                self.current_step = 0
                 self.status_var.set(f"Решение найдено! Всего ходов: {self.n * self.m - 1}")
                 self.draw_board()
             else:
                 self.solution = None
                 messagebox.showinfo("Результат", "Решение не найдено для данной конфигурации")
                 self.status_var.set("Решение не найдено")
+                self.canvas.delete("all")
                 
         except ValueError:
             messagebox.showerror("Ошибка", "Пожалуйста, введите корректные числовые значения")
@@ -185,76 +162,20 @@ class KnightTourApp:
                 color = "#f0d9b5" if (i + j) % 2 == 0 else "#b58863"
                 self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="black")
                 
-                # Draw move number if this cell has been visited
-                if self.solution[i][j] <= self.current_step and self.solution[i][j] >= 0:
+                # Draw move number
+                if self.solution[i][j] >= 0:
                     self.canvas.create_text(x1 + cell_size//2, y1 + cell_size//2, 
                                           text=str(self.solution[i][j]), font=("Arial", 10, "bold"))
         
-        # Draw knight
-        for i in range(self.n):
-            for j in range(self.m):
-                if self.solution[i][j] == self.current_step:
-                    x = j * cell_size + cell_size // 2
-                    y = i * cell_size + cell_size // 2
-                    radius = cell_size // 3
-                    self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, 
-                                          fill="red", outline="darkred")
-                    break
+        # Draw knight on starting position
+        x = self.start_y * cell_size + cell_size // 2
+        y = self.start_x * cell_size + cell_size // 2
+        radius = cell_size // 3
+        self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, 
+                              fill="red", outline="darkred")
     
-    def start_animation(self):
-        if not self.solution:
-            messagebox.showwarning("Предупреждение", "Сначала найдите решение")
-            return
-        
-        self.animation_running = True
-        self.animate()
-    
-    def animate(self):
-        if not self.animation_running:
-            return
-        
-        if self.current_step < self.n * self.m - 1:
-            self.current_step += 1
-            self.draw_board()
-            self.root.update()
-            delay = int(1000 / self.speed_var.get())
-            self.root.after(delay, self.animate)
-        else:
-            self.animation_running = False
-            self.status_var.set("Анимация завершена")
-    
-    def pause_animation(self):
-        self.animation_running = False
-    
-    def resume_animation(self):
-        if self.solution and self.current_step < self.n * self.m - 1:
-            self.animation_running = True
-            self.animate()
-    
-    def next_step(self):
-        if self.solution and self.current_step < self.n * self.m - 1:
-            self.current_step += 1
-            self.draw_board()
-    
-    def prev_step(self):
-        if self.solution and self.current_step > 0:
-            self.current_step -= 1
-            self.draw_board()
-    
-    def first_step(self):
-        if self.solution:
-            self.current_step = 0
-            self.draw_board()
-    
-    def last_step(self):
-        if self.solution:
-            self.current_step = self.n * self.m - 1
-            self.draw_board()
-    
-    def reset(self):
+    def clear(self):
         self.solution = None
-        self.current_step = 0
-        self.animation_running = False
         self.canvas.delete("all")
         self.status_var.set("Готов к работе")
 
