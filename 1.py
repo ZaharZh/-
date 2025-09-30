@@ -80,7 +80,7 @@ class KnightTourApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Задача о ходе коня")
-        self.root.geometry("750x600")
+        self.root.geometry("600x500")
         
         self.n = 8
         self.m = 8
@@ -89,7 +89,6 @@ class KnightTourApp:
         self.solution = None
         self.solutions_count = 0
         self.current_solution_index = 0
-        self.execution_time = 0
         
         self.setup_ui()
         
@@ -112,7 +111,7 @@ class KnightTourApp:
         ttk.Entry(input_frame, textvariable=self.m_var, width=5).grid(row=0, column=3, padx=(0, 10))
         
         # Start position inputs (координаты с 1)
-        ttk.Label(input_frame, text="Начальная позиция (строка, столбец):").grid(row=0, column=4, sticky=tk.W, padx=(10, 0))
+        ttk.Label(input_frame, text="Начальная позиция:").grid(row=0, column=4, sticky=tk.W, padx=(10, 0))
         self.start_x_var = tk.StringVar(value="1")
         self.start_y_var = tk.StringVar(value="1")
         
@@ -138,39 +137,24 @@ class KnightTourApp:
         self.info_label = ttk.Label(main_frame, text="", font=("Arial", 10))
         self.info_label.grid(row=3, column=0, pady=(5, 0))
         
-        # Statistics frame
-        stats_frame = ttk.LabelFrame(main_frame, text="Статистика выполнения", padding="5")
-        stats_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
-        
-        self.stats_var = tk.StringVar(value="Время выполнения: - | Найдено решений: -")
-        ttk.Label(stats_frame, textvariable=self.stats_var, font=("Arial", 9)).pack(anchor=tk.W)
-        
         # Canvas for board
         self.canvas = tk.Canvas(main_frame, bg='white', width=500, height=400)
-        self.canvas.grid(row=5, column=0, pady=(10, 0))
-        
-        # Coordinate labels frame
-        coord_frame = ttk.Frame(main_frame)
-        coord_frame.grid(row=6, column=0, pady=(5, 0))
+        self.canvas.grid(row=4, column=0, pady=(10, 0))
         
         # Status bar
         self.status_var = tk.StringVar(value="Готов к работе")
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN)
-        status_bar.grid(row=7, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        status_bar.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
         
         # Configure grid weights
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(5, weight=1)
+        main_frame.rowconfigure(4, weight=1)
         
     def convert_to_internal_coords(self, x, y):
         """Преобразует координаты от 1 к внутренним координатам от 0"""
         return x - 1, y - 1
-    
-    def convert_to_display_coords(self, x, y):
-        """Преобразует внутренние координаты от 0 к координатам от 1"""
-        return x + 1, y + 1
     
     def find_first_solution(self):
         try:
@@ -187,29 +171,26 @@ class KnightTourApp:
                 return
             
             self.status_var.set("Поиск первого решения...")
-            self.stats_var.set("Время выполнения: - | Найдено решений: -")
             self.root.update()
             
             start_time = time.time()
             solver = KnightTourSolver(self.n, self.m)
             solution = solver.find_first_solution(self.start_x, self.start_y)
             end_time = time.time()
-            self.execution_time = end_time - start_time
+            execution_time = end_time - start_time
             
             if solution:
                 self.solution = solution
                 self.solutions_count = 1
                 self.current_solution_index = 0
-                self.status_var.set("Первое решение найдено!")
-                self.info_label.config(text="Решение 1 из 1")
-                self.stats_var.set(f"Время выполнения: {self.execution_time:.3f} сек | Найдено решений: 1")
+                self.status_var.set(f"Первое решение найдено! Время: {execution_time:.3f} сек")
+                self.info_label.config(text=f"Решение 1 из 1 | Всего ходов: {self.n * self.m - 1}")
                 self.nav_frame.grid_forget()  # Скрываем навигацию
                 self.draw_board()
             else:
                 self.solution = None
                 messagebox.showinfo("Результат", "Решение не найдено для данной конфигурации")
-                self.status_var.set("Решение не найдено")
-                self.stats_var.set(f"Время выполнения: {self.execution_time:.3f} сек | Найдено решений: 0")
+                self.status_var.set(f"Решение не найдено. Время: {execution_time:.3f} сек")
                 self.canvas.delete("all")
                 self.info_label.config(text="")
                 
@@ -232,14 +213,13 @@ class KnightTourApp:
                 return
             
             self.status_var.set("Поиск всех решений...")
-            self.stats_var.set("Время выполнения: - | Найдено решений: -")
             self.root.update()
             
             start_time = time.time()
             solver = KnightTourSolver(self.n, self.m)
             solutions_count = solver.find_all_solutions(self.start_x, self.start_y)
             end_time = time.time()
-            self.execution_time = end_time - start_time
+            execution_time = end_time - start_time
             
             if solutions_count > 0:
                 self.solutions_count = solutions_count
@@ -247,9 +227,8 @@ class KnightTourApp:
                 self.current_solution_index = 0
                 self.solution = self.solver.solutions[0]
                 
-                self.status_var.set(f"Найдено решений: {solutions_count}")
-                self.info_label.config(text=f"Решение 1 из {solutions_count}")
-                self.stats_var.set(f"Время выполнения: {self.execution_time:.3f} сек | Найдено решений: {solutions_count}")
+                self.status_var.set(f"Найдено решений: {solutions_count} | Время: {execution_time:.3f} сек")
+                self.info_label.config(text=f"Решение 1 из {solutions_count} | Всего ходов: {self.n * self.m - 1}")
                 
                 # Показываем навигацию если решений больше 1
                 if solutions_count > 1:
@@ -261,8 +240,7 @@ class KnightTourApp:
             else:
                 self.solution = None
                 messagebox.showinfo("Результат", "Решения не найдены для данной конфигурации")
-                self.status_var.set("Решения не найдены")
-                self.stats_var.set(f"Время выполнения: {self.execution_time:.3f} сек | Найдено решений: 0")
+                self.status_var.set(f"Решения не найдены. Время: {execution_time:.3f} сек")
                 self.canvas.delete("all")
                 self.info_label.config(text="")
                 self.nav_frame.grid_forget()
@@ -278,14 +256,14 @@ class KnightTourApp:
         if self.solutions_count > 1 and self.current_solution_index < self.solutions_count - 1:
             self.current_solution_index += 1
             self.solution = self.solver.solutions[self.current_solution_index]
-            self.info_label.config(text=f"Решение {self.current_solution_index + 1} из {self.solutions_count}")
+            self.info_label.config(text=f"Решение {self.current_solution_index + 1} из {self.solutions_count} | Всего ходов: {self.n * self.m - 1}")
             self.draw_board()
     
     def prev_solution(self):
         if self.solutions_count > 1 and self.current_solution_index > 0:
             self.current_solution_index -= 1
             self.solution = self.solver.solutions[self.current_solution_index]
-            self.info_label.config(text=f"Решение {self.current_solution_index + 1} из {self.solutions_count}")
+            self.info_label.config(text=f"Решение {self.current_solution_index + 1} из {self.solutions_count} | Всего ходов: {self.n * self.m - 1}")
             self.draw_board()
     
     def draw_board(self):
@@ -296,20 +274,11 @@ class KnightTourApp:
         
         cell_size = min(400 // self.m, 400 // self.n, 40)
         
-        # Draw coordinate labels
-        for i in range(self.n):
-            y = i * cell_size + cell_size // 2
-            self.canvas.create_text(10, y, text=str(i + 1), font=("Arial", 8))
-        
-        for j in range(self.m):
-            x = j * cell_size + cell_size // 2
-            self.canvas.create_text(x, 10, text=str(j + 1), font=("Arial", 8))
-        
         # Draw board
         for i in range(self.n):
             for j in range(self.m):
-                x1 = j * cell_size + 20  # Отступ для координат
-                y1 = i * cell_size + 20
+                x1 = j * cell_size
+                y1 = i * cell_size
                 x2 = x1 + cell_size
                 y2 = y1 + cell_size
                 
@@ -322,27 +291,19 @@ class KnightTourApp:
                                           text=str(self.solution[i][j]), font=("Arial", 10, "bold"))
         
         # Draw knight on starting position
-        x = self.start_y * cell_size + 20 + cell_size // 2
-        y = self.start_x * cell_size + 20 + cell_size // 2
+        x = self.start_y * cell_size + cell_size // 2
+        y = self.start_x * cell_size + cell_size // 2
         radius = cell_size // 3
         self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, 
                               fill="red", outline="darkred")
-        
-        # Draw starting position coordinates
-        start_x_display, start_y_display = self.convert_to_display_coords(self.start_x, self.start_y)
-        self.canvas.create_text(x, y + radius + 10, 
-                              text=f"({start_x_display},{start_y_display})", 
-                              font=("Arial", 8), fill="darkred")
     
     def clear(self):
         self.solution = None
         self.solutions_count = 0
         self.current_solution_index = 0
-        self.execution_time = 0
         self.canvas.delete("all")
         self.status_var.set("Готов к работе")
         self.info_label.config(text="")
-        self.stats_var.set("Время выполнения: - | Найдено решений: -")
         self.nav_frame.grid_forget()
 
 def main():
@@ -351,4 +312,4 @@ def main():
     root.mainloop()
 
 if __name__ == "__main__":
-    main() 
+    main()
