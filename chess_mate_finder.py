@@ -6,7 +6,7 @@ import copy
 class ChessMateFinderApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Шахматный анализатор")
+        self.root.title("Шахматы - Поиск матовых и патовых ситуаций")
         self.root.geometry("1000x700")
         
         self.board_size = 8
@@ -26,113 +26,81 @@ class ChessMateFinderApp:
         self.setup_ui()
         
     def setup_ui(self):
-        # Минимальная цветовая схема
-        colors = {
-            'bg': '#f5f5f5',
-            'board_light': '#f0d9b5',
-            'board_dark': '#b58863'
-        }
+        main_frame = tk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        self.root.configure(bg=colors['bg'])
+        left_frame = tk.Frame(main_frame)
+        left_frame.pack(side=tk.LEFT, padx=10)
         
-        # Основной контейнер
-        main_container = tk.Frame(self.root, bg=colors['bg'])
-        main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        # Левая часть - доска
-        left_frame = tk.Frame(main_container, bg=colors['bg'])
-        left_frame.pack(side=tk.LEFT, padx=(0, 20))
-        
-        self.canvas = tk.Canvas(left_frame, width=self.cell_size*8, height=self.cell_size*8, 
-                               bg='white', highlightthickness=0)
-        self.canvas.pack(pady=10)
+        self.canvas = tk.Canvas(left_frame, width=self.cell_size*8, height=self.cell_size*8)
+        self.canvas.pack()
         self.canvas.bind("<Button-1>", self.on_board_click)
         
-        # Инструкция для доски
-        tk.Label(left_frame, text="Нажмите на клетку для черного короля", 
-                bg=colors['bg'], font=('Arial', 9)).pack()
+        right_frame = tk.Frame(main_frame)
+        right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10)
         
-        # Правая часть - управление
-        right_frame = tk.Frame(main_container, bg=colors['bg'])
-        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        tk.Label(right_frame, text="1. Выберите позицию черного короля", font=('Arial', 12, 'bold')).pack(pady=5)
         
-        # Выбор фигур (два выпадающих списка)
-        tk.Label(right_frame, text="Выберите две белые фигуры:", 
-                bg=colors['bg'], font=('Arial', 11, 'bold')).pack(pady=(20, 5))
+        tk.Label(right_frame, text="2. Выберите две фигуры для белых:", font=('Arial', 12, 'bold')).pack(pady=5)
         
-        pieces_frame = tk.Frame(right_frame, bg=colors['bg'])
+        pieces_frame = tk.Frame(right_frame)
         pieces_frame.pack(pady=5)
         
-        self.piece1_var = tk.StringVar()
-        self.piece2_var = tk.StringVar()
+        self.piece_vars = []
+        pieces = [('Ферзь', 'Q'), ('Ладья', 'R'), ('Слон', 'B'), ('Конь', 'N'), ('Пешка', 'P')]
         
-        pieces = [('Ферзь (♕)', 'Q'), ('Ладья (♖)', 'R'), ('Слон (♗)', 'B'), 
-                 ('Конь (♘)', 'N'), ('Пешка (♙)', 'P')]
+        for i, (name, code) in enumerate(pieces):
+            var = tk.BooleanVar()
+            cb = tk.Checkbutton(pieces_frame, text=f"{name} ({self.piece_symbols[code]})", 
+                              variable=var, font=('Arial', 11),
+                              command=lambda c=code, v=var: self.on_piece_select(c, v))
+            cb.grid(row=i//2, column=i%2, sticky='w', padx=5, pady=2)
+            self.piece_vars.append((code, var))
         
-        ttk.Label(pieces_frame, text="Первая фигура:", background=colors['bg']).grid(row=0, column=0, sticky='w', pady=2)
-        piece1_combo = ttk.Combobox(pieces_frame, textvariable=self.piece1_var, 
-                                   values=[p[0] for p in pieces], width=20, state="readonly")
-        piece1_combo.grid(row=0, column=1, padx=5, pady=2)
-        piece1_combo.current(0)
+        tk.Button(right_frame, text="Найти все позиции", command=self.find_positions,
+                 font=('Arial', 12), bg='#4CAF50', fg='white', padx=20, pady=10).pack(pady=10)
         
-        ttk.Label(pieces_frame, text="Вторая фигура:", background=colors['bg']).grid(row=1, column=0, sticky='w', pady=2)
-        piece2_combo = ttk.Combobox(pieces_frame, textvariable=self.piece2_var, 
-                                   values=[p[0] for p in pieces], width=20, state="readonly")
-        piece2_combo.grid(row=1, column=1, padx=5, pady=2)
-        piece2_combo.current(1)
+        stats_frame = tk.LabelFrame(right_frame, text="Статистика", font=('Arial', 11, 'bold'))
+        stats_frame.pack(fill=tk.X, pady=10)
         
-        # Основная кнопка поиска
-        tk.Button(right_frame, text="НАЙТИ ПОЗИЦИИ", command=self.find_positions,
-                 font=('Arial', 12, 'bold'), bg='#2c3e50', fg='white', 
-                 padx=30, pady=10, cursor="hand2").pack(pady=20)
+        self.mate_label = tk.Label(stats_frame, text="Матовых позиций: 0", font=('Arial', 11))
+        self.mate_label.pack(pady=2)
         
-        # Статистика в одной строке
-        stats_frame = tk.Frame(right_frame, bg=colors['bg'])
-        stats_frame.pack(pady=10)
+        self.pat_label = tk.Label(stats_frame, text="Патовых позиций: 0", font=('Arial', 11))
+        self.pat_label.pack(pady=2)
         
-        self.mate_label = tk.Label(stats_frame, text="Мат: 0", font=('Arial', 11), 
-                                  bg=colors['bg'], fg='#c0392b')
-        self.mate_label.pack(side=tk.LEFT, padx=10)
+        self.total_label = tk.Label(stats_frame, text="Всего позиций: 0", font=('Arial', 11))
+        self.total_label.pack(pady=2)
         
-        self.pat_label = tk.Label(stats_frame, text="Пат: 0", font=('Arial', 11), 
-                                 bg=colors['bg'], fg='#f39c12')
-        self.pat_label.pack(side=tk.LEFT, padx=10)
+        nav_frame = tk.LabelFrame(right_frame, text="Навигация по позициям", font=('Arial', 11, 'bold'))
+        nav_frame.pack(fill=tk.X, pady=10)
         
-        self.total_label = tk.Label(stats_frame, text="Всего: 0", font=('Arial', 11), 
-                                   bg=colors['bg'], fg='#2c3e50')
-        self.total_label.pack(side=tk.LEFT, padx=10)
+        self.position_label = tk.Label(nav_frame, text="Позиция: 0 / 0", font=('Arial', 11))
+        self.position_label.pack(pady=5)
         
-        # Навигация - только вперед/назад и номер
-        nav_frame = tk.Frame(right_frame, bg=colors['bg'])
-        nav_frame.pack(pady=10)
+        btn_frame = tk.Frame(nav_frame)
+        btn_frame.pack(pady=5)
         
-        tk.Button(nav_frame, text="◀", command=self.prev_position,
-                 font=('Arial', 14), bg='#ecf0f1', width=3, 
-                 cursor="hand2", relief=tk.FLAT).pack(side=tk.LEFT, padx=2)
+        tk.Button(btn_frame, text="◀◀ Первая", command=self.first_position,
+                 font=('Arial', 10)).pack(side=tk.LEFT, padx=2)
+        tk.Button(btn_frame, text="◀ Пред.", command=self.prev_position,
+                 font=('Arial', 10)).pack(side=tk.LEFT, padx=2)
+        tk.Button(btn_frame, text="След. ▶", command=self.next_position,
+                 font=('Arial', 10)).pack(side=tk.LEFT, padx=2)
+        tk.Button(btn_frame, text="Последняя ▶▶", command=self.last_position,
+                 font=('Arial', 10)).pack(side=tk.LEFT, padx=2)
         
-        self.position_label = tk.Label(nav_frame, text="0/0", font=('Arial', 11), 
-                                      bg=colors['bg'], width=8)
-        self.position_label.pack(side=tk.LEFT, padx=5)
-        
-        tk.Button(nav_frame, text="▶", command=self.next_position,
-                 font=('Arial', 14), bg='#ecf0f1', width=3,
-                 cursor="hand2", relief=tk.FLAT).pack(side=tk.LEFT, padx=2)
-        
-        # Статус позиции
-        self.status_label = tk.Label(right_frame, text="", font=('Arial', 12, 'bold'), 
-                                    bg=colors['bg'])
+        self.status_label = tk.Label(nav_frame, text="", font=('Arial', 11, 'bold'), fg='blue')
         self.status_label.pack(pady=5)
         
-        # Кнопка сброса (единственная дополнительная кнопка)
-        tk.Button(right_frame, text="СБРОС", command=self.reset,
-                 font=('Arial', 10), bg='#bdc3c7', fg='#2c3e50', 
-                 padx=15, pady=5, cursor="hand2").pack(pady=20)
+        tk.Button(right_frame, text="Сбросить", command=self.reset,
+                 font=('Arial', 11), bg='#f44336', fg='white', padx=20, pady=5).pack(pady=10)
         
         self.draw_board()
     
     def draw_board(self):
         self.canvas.delete("all")
-        colors = [self.board_light, self.board_dark]
+        colors = ['#F0D9B5', '#B58863']
         
         for row in range(8):
             for col in range(8):
@@ -150,12 +118,11 @@ class ChessMateFinderApp:
                                           text=self.piece_symbols[piece],
                                           font=('Arial', 48), fill='black' if piece.islower() else 'white')
         
-        # Координаты
         for i in range(8):
             self.canvas.create_text(i * self.cell_size + self.cell_size//2, 8 * self.cell_size + 15,
-                                  text=chr(97 + i), font=('Arial', 10))
+                                  text=chr(97 + i), font=('Arial', 12))
             self.canvas.create_text(-15, i * self.cell_size + self.cell_size//2,
-                                  text=str(8 - i), font=('Arial', 10))
+                                  text=str(8 - i), font=('Arial', 12))
     
     def on_board_click(self, event):
         if self.mate_positions or self.pat_positions:
@@ -178,26 +145,23 @@ class ChessMateFinderApp:
             
             self.draw_board()
     
+    def on_piece_select(self, code, var):
+        selected = [c for c, v in self.piece_vars if v.get()]
+        
+        if len(selected) > 2:
+            var.set(False)
+            messagebox.showwarning("Предупреждение", "Можно выбрать только 2 фигуры!")
+    
     def find_positions(self):
         if not self.black_king_pos:
             messagebox.showerror("Ошибка", "Выберите позицию черного короля!")
             return
         
-        # Получаем коды фигур из выбранных значений
-        piece1_name = self.piece1_var.get()
-        piece2_name = self.piece2_var.get()
+        self.selected_pieces = [c for c, v in self.piece_vars if v.get()]
         
-        if not piece1_name or not piece2_name:
-            messagebox.showerror("Ошибка", "Выберите обе фигуры!")
+        if len(self.selected_pieces) != 2:
+            messagebox.showerror("Ошибка", "Выберите ровно 2 фигуры!")
             return
-        
-        # Преобразуем названия в коды
-        piece_map = {
-            'Ферзь (♕)': 'Q', 'Ладья (♖)': 'R', 'Слон (♗)': 'B',
-            'Конь (♘)': 'N', 'Пешка (♙)': 'P'
-        }
-        
-        self.selected_pieces = [piece_map[piece1_name], piece_map[piece2_name]]
         
         self.mate_positions = []
         self.pat_positions = []
@@ -240,7 +204,7 @@ class ChessMateFinderApp:
         if self.mate_positions or self.pat_positions:
             self.current_position_index = 0
             self.show_current_position()
-            messagebox.showinfo("Готово", f"Найдено {len(self.mate_positions)} матовых и {len(self.pat_positions)} патовых позиций.")
+            messagebox.showinfo("Готово", f"Поиск завершен!\nНайдено {len(self.mate_positions)} матовых и {len(self.pat_positions)} патовых позиций.")
         else:
             messagebox.showinfo("Результат", "Не найдено ни одной матовой или патовой позиции.")
     
@@ -386,9 +350,9 @@ class ChessMateFinderApp:
         return False
     
     def update_stats(self):
-        self.mate_label.config(text=f"Мат: {len(self.mate_positions)}")
-        self.pat_label.config(text=f"Пат: {len(self.pat_positions)}")
-        self.total_label.config(text=f"Всего: {len(self.mate_positions) + len(self.pat_positions)}")
+        self.mate_label.config(text=f"Матовых позиций: {len(self.mate_positions)}")
+        self.pat_label.config(text=f"Патовых позиций: {len(self.pat_positions)}")
+        self.total_label.config(text=f"Всего позиций: {len(self.mate_positions) + len(self.pat_positions)}")
     
     def show_current_position(self):
         all_positions = self.mate_positions + self.pat_positions
@@ -402,10 +366,15 @@ class ChessMateFinderApp:
             
             is_mate = self.current_position_index < len(self.mate_positions)
             status = "МАТ" if is_mate else "ПАТ"
-            color = "#c0392b" if is_mate else "#f39c12"
+            color = "red" if is_mate else "orange"
             
             self.status_label.config(text=status, fg=color)
-            self.position_label.config(text=f"{self.current_position_index + 1}/{len(all_positions)}")
+            self.position_label.config(text=f"Позиция: {self.current_position_index + 1} / {len(all_positions)}")
+    
+    def first_position(self):
+        if self.mate_positions or self.pat_positions:
+            self.current_position_index = 0
+            self.show_current_position()
     
     def prev_position(self):
         all_positions = self.mate_positions + self.pat_positions
@@ -419,6 +388,12 @@ class ChessMateFinderApp:
             self.current_position_index += 1
             self.show_current_position()
     
+    def last_position(self):
+        all_positions = self.mate_positions + self.pat_positions
+        if all_positions:
+            self.current_position_index = len(all_positions) - 1
+            self.show_current_position()
+    
     def reset(self):
         self.board = [['' for _ in range(8)] for _ in range(8)]
         self.black_king_pos = None
@@ -426,26 +401,16 @@ class ChessMateFinderApp:
         self.pat_positions = []
         self.current_position_index = 0
         
-        self.piece1_var.set("")
-        self.piece2_var.set("")
-        
-        # Установим значения по умолчанию
-        children = self.root.winfo_children()
-        for child in children:
-            if isinstance(child, tk.Frame):
-                for widget in child.winfo_children():
-                    if isinstance(widget, ttk.Combobox):
-                        if "Первая" in str(widget):
-                            widget.current(0)
-                        elif "Вторая" in str(widget):
-                            widget.current(1)
+        for code, var in self.piece_vars:
+            var.set(False)
         
         self.update_stats()
         self.status_label.config(text="")
-        self.position_label.config(text="0/0")
+        self.position_label.config(text="Позиция: 0 / 0")
         self.draw_board()
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = ChessMateFinderApp(root)
     root.mainloop()
+
