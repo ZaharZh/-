@@ -5,14 +5,15 @@ import matplotlib.pyplot as plt
 
 def extract_lbp_features():
   # ЭТАП 1: Загрузка и конвертация в оттенки серого
-  image = cv2.imread(‘image.jpg’)
+  image = cv2.imread("image.jpg")
   gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
   print(f"Изображение загружено. Размер: {gray.shape}")
   
   # ЭТАП 2: Вычисление карты LBP
   P=8
   R=1
-  lbp = local_binary_pattern(gray, P, R, method='uniform’)
+  method='uniform'
+  lbp = local_binary_pattern(gray, P, R, method)
   print(f"Карта LBP вычислена. Уникальных меток: {np.unique(lbp).size}")
   
   # ЭТАП 3: Построение гистограммы
@@ -21,7 +22,7 @@ def extract_lbp_features():
   hist, _ = np.histogram(lbp.ravel(), bins=n_bins, range=(0, n_bins))
   # Нормализация гистограммы
   hist = hist.astype("float")
-  hist /= (hist.sum() + 1e-7
+  hist /= (hist.sum() + 1e-7)
 
   # ЭТАП 4: Визуализация
   fig, axes = plt.subplots(1, 3, figsize=(15, 5))
