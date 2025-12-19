@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 def extract_lbp_features():
   # ЭТАП 1: Загрузка и конвертация в оттенки серого
-  image = cv2.imread(‘image.jpeg’)
+  image = cv2.imread(‘image.jpg’)
   gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
   print(f"Изображение загружено. Размер: {gray.shape}")
   
