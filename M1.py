@@ -4,14 +4,7 @@ import struct
 from typing import List
 
 class AES:
-    """
-    Реализация AES-128 (128-битный ключ, 10 раундов)
-    Без использования сторонних библиотек
-    """
-    
-    # Предварительно вычисленные таблицы для оптимизации
-    
-    # Таблица S-box (прямая)
+
     SBOX = [
         0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
         0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -31,7 +24,6 @@ class AES:
         0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
     ]
     
-    # Таблица обратного S-box (для дешифрования)
     INV_SBOX = [
         0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
         0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
@@ -51,13 +43,9 @@ class AES:
         0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
     ]
     
-    # Константы для Key Expansion (Rcon)
     RCON = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
     
     def __init__(self, key: bytes):
-        """
-        Инициализация AES с ключом (16 байт для AES-128)
-        """
         if len(key) != 16:
             raise ValueError("Для AES-128 ключ должен быть 16 байт (128 бит)")
         
@@ -65,10 +53,7 @@ class AES:
         self.round_keys = self._key_expansion(key)
     
     def _key_expansion(self, key: bytes) -> List[List[int]]:
-        """
-        Расширение ключа для AES-128
-        Генерирует 11 раундовых ключей (44 слова по 32 бита)
-        """
+
         w = [0] * 44
         
         # Первые 4 слова - это сам ключ
@@ -120,16 +105,12 @@ class AES:
         """Операция ShiftRows - циклический сдвиг строк матрицы состояния"""
         result = [0] * 16
         
-        # Строка 0: без сдвига
         result[0], result[4], result[8], result[12] = state[0], state[4], state[8], state[12]
         
-        # Строка 1: сдвиг на 1
         result[1], result[5], result[9], result[13] = state[5], state[9], state[13], state[1]
         
-        # Строка 2: сдвиг на 2
         result[2], result[6], result[10], result[14] = state[10], state[14], state[2], state[6]
-        
-        # Строка 3: сдвиг на 3
+
         result[3], result[7], result[11], result[15] = state[15], state[3], state[7], state[11]
         
         return result
@@ -137,17 +118,13 @@ class AES:
     def _inv_shift_rows(self, state: List[int]) -> List[int]:
         """Обратная операция ShiftRows - сдвиг вправо"""
         result = [0] * 16
-        
-        # Первая строка без изменений
+
         result[0], result[4], result[8], result[12] = state[0], state[4], state[8], state[12]
-        
-        # Вторая строка: сдвиг на 1 вправо
+
         result[1], result[5], result[9], result[13] = state[13], state[1], state[5], state[9]
-        
-        # Третья строка: сдвиг на 2 вправо
+
         result[2], result[6], result[10], result[14] = state[10], state[14], state[2], state[6]
-        
-        # Четвертая строка: сдвиг на 3 вправо
+
         result[3], result[7], result[11], result[15] = state[7], state[11], state[15], state[3]
         
         return result
@@ -163,13 +140,13 @@ class AES:
                 hi_bit_set = a & 0x80
                 a = (a << 1) & 0xFF
                 if hi_bit_set:
-                    a ^= 0x1B  # Полином x^8 + x^4 + x^3 + x + 1
+                    a ^= 0x1B 
                 b >>= 1
             return p
         
         result = [0] * 16
         
-        for i in range(4):  # Для каждого столбца
+        for i in range(4): 
             col_start = i * 4
             s0, s1, s2, s3 = (
                 state[col_start],
@@ -313,11 +290,8 @@ class EncryptionApp:
         self.root = root
         self.root.title("Шифрование текста AES-128")
         self.root.geometry("900x700")
-        
-        # Переменные
         self.key_var = tk.StringVar(value="MySecretKey12345")  # 16 символов для AES-128
-        
-        # Создание виджетов
+
         self.create_widgets()
         
     def create_widgets(self):
@@ -326,25 +300,21 @@ class EncryptionApp:
         style.configure("TButton", padding=8, font=("Arial", 11))
         style.configure("TLabel", font=("Arial", 11))
         style.configure("TLabelframe.Label", font=("Arial", 12, "bold"))
-        
-        # Фрейм для исходного текста
+
         input_frame = ttk.LabelFrame(self.root, text="Исходный текст", padding=15)
         input_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
         
         self.input_text = tk.Text(input_frame, height=8, font=("Courier", 11), wrap=tk.WORD)
         self.input_text.pack(fill=tk.BOTH, expand=True)
-        
-        # Фрейм для управления с увеличенным полем ключа
+
         control_frame = ttk.Frame(self.root)
         control_frame.pack(fill=tk.X, padx=15, pady=(25, 15))
-        
-        # Фрейм для ключа шифрования
+ 
         key_frame = ttk.Frame(control_frame)
         key_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 30))
         
         ttk.Label(key_frame, text="Ключ шифрования (16 символов):", font=("Arial", 12)).pack(anchor=tk.W, pady=(0, 8))
-        
-        # Увеличенное поле для ввода ключа
+
         self.key_entry = ttk.Entry(
             key_frame, 
             textvariable=self.key_var, 
@@ -352,14 +322,12 @@ class EncryptionApp:
             font=("Arial", 12)
         )
         self.key_entry.pack(fill=tk.X, pady=(0, 10))
-        
-        # Фрейм для кнопок
+
         button_frame = ttk.Frame(control_frame)
         button_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         ttk.Label(button_frame, text="").pack(pady=(0, 10))
         
-        # Кнопки с увеличенными отступами
         buttons_frame = ttk.Frame(button_frame)
         buttons_frame.pack(fill=tk.X)
         
@@ -381,13 +349,6 @@ class EncryptionApp:
             buttons_frame, 
             text="Очистить все", 
             command=self.clear_all,
-            width=15
-        ).pack(side=tk.LEFT, padx=5, pady=5)
-        
-        ttk.Button(
-            buttons_frame, 
-            text="Пример работы", 
-            command=self.show_example,
             width=15
         ).pack(side=tk.LEFT, padx=5, pady=5)
         
@@ -492,12 +453,6 @@ class EncryptionApp:
             # Автоматически очищаем поле расшифрованного текста
             self.decrypted_text.delete("1.0", tk.END)
             
-            # Показываем информацию о размере
-            messagebox.showinfo("Успех", 
-                              f"Текст успешно зашифрован!\n"
-                              f"Исходный размер: {len(text.encode('utf-8'))} байт\n"
-                              f"Зашифрованный размер: {len(encrypted_bytes)} байт")
-            
         except ValueError as e:
             messagebox.showerror("Ошибка", f"Ошибка при шифровании: {str(e)}")
         except Exception as e:
@@ -544,8 +499,6 @@ class EncryptionApp:
             self.decrypted_text.delete("1.0", tk.END)
             self.decrypted_text.insert("1.0", decrypted_text)
             
-            messagebox.showinfo("Успех", "Текст успешно расшифрован!")
-            
         except ValueError as e:
             messagebox.showerror("Ошибка", f"Ошибка при расшифровании: {str(e)}")
         except Exception as e:
@@ -558,31 +511,6 @@ class EncryptionApp:
         self.decrypted_text.delete("1.0", tk.END)
         self.key_var.set("MySecretKey12345")
         self.key_entry.focus_set()
-    
-    def show_example(self):
-        """Показать пример работы алгоритма"""
-        example_text = """Пример работы AES-128 шифрования:
-
-Алгоритм AES (Advanced Encryption Standard) - это симметричный блочный шифр, принятый в качестве стандарта в США в 2001 году.
-
-Основные характеристики AES-128:
-• Длина ключа: 128 бит (16 байт)
-• Длина блока: 128 бит (16 байт)
-• Количество раундов: 10
-
-Пример шифрования:
-Ключ: "MySecretKey12345"
-Текст: "Привет, мир! Это тест AES шифрования."
-
-Зашифрованный текст будет представлен в hex формате."""
-        
-        self.input_text.delete("1.0", tk.END)
-        self.input_text.insert("1.0", "Привет, мир! Это тест AES шифрования.")
-        self.key_var.set("MySecretKey12345")
-        
-        # Автоматически шифруем пример
-        self.encrypt()
-
 
 def main():
     root = tk.Tk()
