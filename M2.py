@@ -1,179 +1,186 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
-import rsa
-import hashlib
+from tkinter import scrolledtext, messagebox
 import random
+import math
 
+# ---------- RSA функции ----------
+def is_prime(n: int) -> bool:
+    """Проверка числа на простоту перебором делителей."""
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+    limit = int(math.sqrt(n)) + 1
+    for i in range(3, limit, 2):
+        if n % i == 0:
+            return False
+    return True
+
+def generate_prime(min_val: int, max_val: int) -> int:
+    """Генерирует случайное простое число в заданном диапазоне."""
+    primes = [i for i in range(min_val, max_val + 1) if is_prime(i)]
+    if not primes:
+        raise ValueError("В указанном диапазоне нет простых чисел")
+    return random.choice(primes)
+
+def gcd(a: int, b: int) -> int:
+    """Наибольший общий делитель."""
+    return math.gcd(a, b)
+
+def modinv(a: int, m: int) -> int:
+    """Находит обратное число к a по модулю m (расширенный алгоритм Евклида)."""
+    g, x, _ = egcd(a, m)
+    if g != 1:
+        raise ValueError("Обратного элемента не существует")
+    return x % m
+
+def egcd(a: int, b: int):
+    """Расширенный алгоритм Евклида."""
+    if a == 0:
+        return b, 0, 1
+    else:
+        g, y, x = egcd(b % a, a)
+        return g, x - (b // a) * y, y
+
+def generate_keys():
+    """Генерирует открытый и закрытый ключи RSA."""
+    # Выбираем два разных простых числа в диапазоне 100-500
+    p = generate_prime(100, 500)
+    q = generate_prime(100, 500)
+    while q == p:
+        q = generate_prime(100, 500)
+    
+    n = p * q
+    phi = (p - 1) * (q - 1)
+    
+    # Выбираем e: обычно 65537, но проверяем взаимную простоту с phi
+    e = 65537
+    if gcd(e, phi) != 1:
+        # Если 65537 не подходит, подбираем другое e
+        for candidate in [17, 257, 65537]:
+            if gcd(candidate, phi) == 1:
+                e = candidate
+                break
+        else:
+            # Если ничего не подошло, перебираем нечётные числа, начиная с 3
+            e = 3
+            while gcd(e, phi) != 1:
+                e += 2
+    
+    d = modinv(e, phi)
+    return (n, e), (n, d)
+
+def encrypt(text: str, n: int, e: int) -> str:
+    """Шифрует текст: каждый символ -> число, возводится в степень e по модулю n."""
+    encrypted_numbers = []
+    for ch in text:
+        m = ord(ch)
+        if m >= n:
+            raise ValueError(f"Символ '{ch}' имеет код {m}, который больше или равен модулю n={n}. Увеличьте простые числа.")
+        c = pow(m, e, n)
+        encrypted_numbers.append(str(c))
+    return " ".join(encrypted_numbers)
+
+def decrypt(cipher_text: str, n: int, d: int) -> str:
+    """Дешифрует текст: числа -> возводятся в степень d по модулю n -> символы."""
+    if not cipher_text.strip():
+        return ""
+    parts = cipher_text.strip().split()
+    decrypted_chars = []
+    for part in parts:
+        try:
+            c = int(part)
+        except ValueError:
+            raise ValueError(f"Неверный формат зашифрованного текста: ожидалось число, получено '{part}'")
+        m = pow(c, d, n)
+        decrypted_chars.append(chr(m))
+    return "".join(decrypted_chars)
+
+# ---------- GUI ----------
 class RSAApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("RSA шифрование")
-        self.root.geometry("800x500")
-        self.root.minsize(600, 400)
+        self.root.title("RSA Шифрование")
+        self.root.geometry("600x500")
+        self.root.resizable(True, True)
 
-        # Переменная для пароля
-        self.password_var = tk.StringVar(value="my_secure_password")
+        # Генерация ключей при запуске
+        self.pub_key, self.priv_key = generate_keys()
+        self.n, self.e = self.pub_key
+        self.n_priv, self.d = self.priv_key
 
+        # Создание виджетов
         self.create_widgets()
 
     def create_widgets(self):
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
         # Поле ввода текста
-        input_frame = ttk.LabelFrame(main_frame, text="Входной текст", padding="10")
-        input_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        tk.Label(self.root, text="Входной текст (для шифрования или расшифрования):").pack(pady=(10, 0))
+        self.input_text = scrolledtext.ScrolledText(self.root, height=5, wrap=tk.WORD)
+        self.input_text.pack(fill=tk.BOTH, padx=10, pady=5, expand=True)
 
-        self.input_text = tk.Text(input_frame, height=8, font=("Courier", 11), wrap=tk.WORD)
-        self.input_text.pack(fill=tk.BOTH, expand=True)
+        # Ключи
+        frame_keys = tk.Frame(self.root)
+        frame_keys.pack(fill=tk.X, padx=10, pady=5)
 
-        input_scroll = ttk.Scrollbar(self.input_text)
-        input_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.input_text.config(yscrollcommand=input_scroll.set)
-        input_scroll.config(command=self.input_text.yview)
+        tk.Label(frame_keys, text="Открытый ключ (n, e):").grid(row=0, column=0, sticky=tk.W)
+        self.pub_key_var = tk.StringVar(value=f"n={self.n}, e={self.e}")
+        self.pub_key_entry = tk.Entry(frame_keys, textvariable=self.pub_key_var, state='readonly', width=30)
+        self.pub_key_entry.grid(row=0, column=1, padx=5, pady=2)
 
-        # Панель с паролем и кнопками
-        control_frame = ttk.Frame(main_frame)
-        control_frame.pack(fill=tk.X, pady=10)
-
-        # Поле для пароля
-        pass_frame = ttk.Frame(control_frame)
-        pass_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        ttk.Label(pass_frame, text="Пароль (для генерации RSA-ключей):", font=("Arial", 11)).pack(anchor=tk.W)
-        self.pass_entry = ttk.Entry(pass_frame, textvariable=self.password_var, font=("Arial", 11), width=30)
-        self.pass_entry.pack(fill=tk.X, pady=(5, 0))
+        tk.Label(frame_keys, text="Закрытый ключ (n, d):").grid(row=1, column=0, sticky=tk.W)
+        self.priv_key_var = tk.StringVar(value=f"n={self.n_priv}, d={self.d}")
+        self.priv_key_entry = tk.Entry(frame_keys, textvariable=self.priv_key_var, state='readonly', width=30)
+        self.priv_key_entry.grid(row=1, column=1, padx=5, pady=2)
 
         # Кнопки
-        btn_frame = ttk.Frame(control_frame)
-        btn_frame.pack(side=tk.RIGHT, padx=(20, 0))
+        btn_frame = tk.Frame(self.root)
+        btn_frame.pack(pady=10)
 
-        self.encrypt_btn = ttk.Button(btn_frame, text="Зашифровать", command=self.encrypt, width=15)
+        self.encrypt_btn = tk.Button(btn_frame, text="Зашифровать", command=self.encrypt_text, width=15)
         self.encrypt_btn.pack(side=tk.LEFT, padx=5)
 
-        self.decrypt_btn = ttk.Button(btn_frame, text="Расшифровать", command=self.decrypt, width=15)
+        self.decrypt_btn = tk.Button(btn_frame, text="Расшифровать", command=self.decrypt_text, width=15)
         self.decrypt_btn.pack(side=tk.LEFT, padx=5)
 
-        # Поле вывода результата
-        output_frame = ttk.LabelFrame(main_frame, text="Результат", padding="10")
-        output_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
+        # Поле вывода зашифрованного текста
+        tk.Label(self.root, text="Зашифрованный текст:").pack()
+        self.encrypted_text = scrolledtext.ScrolledText(self.root, height=5, wrap=tk.WORD)
+        self.encrypted_text.pack(fill=tk.BOTH, padx=10, pady=5, expand=True)
 
-        self.output_text = tk.Text(output_frame, height=8, font=("Courier", 11), wrap=tk.WORD, bg="#f5f5f5")
-        self.output_text.pack(fill=tk.BOTH, expand=True)
+        # Поле вывода расшифрованного текста
+        tk.Label(self.root, text="Расшифрованный текст:").pack()
+        self.decrypted_text = scrolledtext.ScrolledText(self.root, height=5, wrap=tk.WORD)
+        self.decrypted_text.pack(fill=tk.BOTH, padx=10, pady=5, expand=True)
 
-        output_scroll = ttk.Scrollbar(self.output_text)
-        output_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.output_text.config(yscrollcommand=output_scroll.set)
-        output_scroll.config(command=self.output_text.yview)
-
-        # Информация
-        info_label = ttk.Label(
-            main_frame,
-            text="RSA (1024 бит). Зашифрованный текст отображается в hex. Длина сообщения ограничена (≈117 байт).",
-            font=("Arial", 9, "italic")
-        )
-        info_label.pack(pady=(5, 0))
-
-        self.pass_entry.bind("<Return>", lambda e: self.encrypt())
-
-    def generate_keys_from_password(self, password: str):
-        """
-        Детерминированная генерация RSA-ключей на основе пароля.
-        Используется хеш пароля как seed для ГПСЧ.
-        """
-        # Получаем seed как число из хеша пароля
-        seed = int(hashlib.sha256(password.encode()).hexdigest(), 16)
-        rng = random.Random(seed)
-
-        # Функция randfunc, которую требует rsa.newkeys
-        def randfunc(n):
-            return bytes([rng.getrandbits(8) for _ in range(n)])
-
-        # Генерируем ключи длиной 1024 бита
-        (pubkey, privkey) = rsa.newkeys(1024, randfunc)
-        return pubkey, privkey
-
-    def encrypt(self):
-        """Шифрование текста из верхнего поля"""
+    def encrypt_text(self):
+        """Обработчик кнопки 'Зашифровать'."""
+        plain = self.input_text.get("1.0", tk.END).rstrip("\n")
+        if not plain:
+            messagebox.showwarning("Предупреждение", "Введите текст для шифрования.")
+            return
         try:
-            text = self.input_text.get("1.0", tk.END).strip()
-            if not text:
-                messagebox.showwarning("Предупреждение", "Введите текст для шифрования.")
-                return
-
-            password = self.pass_entry.get().strip()
-            if not password:
-                messagebox.showwarning("Предупреждение", "Введите пароль.")
-                return
-
-            pubkey, _ = self.generate_keys_from_password(password)
-
-            # Кодируем сообщение в байты
-            message_bytes = text.encode('utf-8')
-
-            # RSA может зашифровать только сообщение, длина которого меньше длины ключа в байтах минус padding
-            # Для 1024 бит и PKCS#1 v1.5 максимум — 117 байт.
-            if len(message_bytes) > 117:
-                messagebox.showerror("Ошибка", f"Сообщение слишком длинное ({len(message_bytes)} байт).\n"
-                                                "Максимум 117 байт для RSA 1024 бит с PKCS#1.")
-                return
-
-            encrypted = rsa.encrypt(message_bytes, pubkey)
-            hex_result = encrypted.hex()
-
-            self.output_text.delete("1.0", tk.END)
-            self.output_text.insert("1.0", hex_result)
-
-        except rsa.pkcs1.CryptoError as e:
-            messagebox.showerror("Ошибка шифрования", f"Ошибка RSA: {str(e)}")
+            encrypted = encrypt(plain, self.n, self.e)
+            self.encrypted_text.delete("1.0", tk.END)
+            self.encrypted_text.insert("1.0", encrypted)
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Непредвиденная ошибка:\n{str(e)}")
+            messagebox.showerror("Ошибка шифрования", str(e))
 
-    def decrypt(self):
-        """Расшифрование hex-строки из верхнего поля"""
+    def decrypt_text(self):
+        """Обработчик кнопки 'Расшифровать'."""
+        cipher = self.input_text.get("1.0", tk.END).rstrip("\n")
+        if not cipher:
+            messagebox.showwarning("Предупреждение", "Введите зашифрованный текст для расшифрования.")
+            return
         try:
-            hex_str = self.input_text.get("1.0", tk.END).strip()
-            if not hex_str:
-                messagebox.showwarning("Предупреждение", "Введите зашифрованный текст (hex) для расшифровки.")
-                return
-
-            password = self.pass_entry.get().strip()
-            if not password:
-                messagebox.showwarning("Предупреждение", "Введите пароль.")
-                return
-
-            _, privkey = self.generate_keys_from_password(password)
-
-            # Проверка и преобразование hex в байты
-            try:
-                encrypted_bytes = bytes.fromhex(hex_str)
-            except ValueError:
-                messagebox.showerror("Ошибка", "Введённый текст не является корректной hex-строкой.")
-                return
-
-            # Расшифровываем
-            decrypted_bytes = rsa.decrypt(encrypted_bytes, privkey)
-
-            # Пытаемся декодировать в UTF-8
-            try:
-                decrypted_text = decrypted_bytes.decode('utf-8')
-            except UnicodeDecodeError:
-                decrypted_text = str(decrypted_bytes)  # если не текст, показываем байты
-
-            self.output_text.delete("1.0", tk.END)
-            self.output_text.insert("1.0", decrypted_text)
-
-        except rsa.pkcs1.DecryptionError:
-            messagebox.showerror("Ошибка", "Не удалось расшифровать. Возможно, неверный пароль или повреждённые данные.")
+            decrypted = decrypt(cipher, self.n_priv, self.d)
+            self.decrypted_text.delete("1.0", tk.END)
+            self.decrypted_text.insert("1.0", decrypted)
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Непредвиденная ошибка:\n{str(e)}")
+            messagebox.showerror("Ошибка расшифрования", str(e))
 
-
-def main():
+if __name__ == "__main__":
     root = tk.Tk()
     app = RSAApp(root)
     root.mainloop()
-
-
-if __name__ == "__main__":
-    main()
