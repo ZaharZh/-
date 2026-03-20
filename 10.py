@@ -1,7 +1,8 @@
 import math
 
 def phi(x1, x2):
-    f1 = math.atan(x1 ** 2 + 2 * x1 * x2 + 2 * x2 + 0.5) - 0.2
+    u = x1**2 + 2*x1*x2 + 2*x2 + 0.5
+    f1 = math.pi/2 - math.atan(u) - 0.2
     f2 = math.cos(0.1 * x2 ** 2 + x2 - 0.02 * x1 ** 2)
     return f1 ** 2 + f2 ** 2
 
