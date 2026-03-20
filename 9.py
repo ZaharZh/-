@@ -1,7 +1,8 @@
 import math
 
 def f1(x1, x2):
-    return math.atan(x1**2 + 2*x1*x2 + 2*x2 + 0.5) - 0.2
+    u = x1**2 + 2*x1*x2 + 2*x2 + 0.5
+    return math.pi/2 - math.atan(u) - 0.2
 
 def f2(x1, x2):
     return math.cos(0.1*x2**2 + x2 - 0.02*x1**2)
@@ -9,8 +10,8 @@ def f2(x1, x2):
 def jacobian(x1, x2):
     u = x1**2 + 2*x1*x2 + 2*x2 + 0.5
     denom = 1.0 + u**2
-    df1_dx1 = (2*x1 + 2*x2) / denom
-    df1_dx2 = (2*x1 + 2) / denom
+    df1_dx1 = -(2*x1 + 2*x2) / denom
+    df1_dx2 = -(2*x1 + 2) / denom
 
     v = 0.1*x2**2 + x2 - 0.02*x1**2
     sin_v = math.sin(v)
