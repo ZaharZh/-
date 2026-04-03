@@ -1,0 +1,502 @@
+! Name of the expert system: LOR (ENT Troubleshooter)
+! Description: Preliminary ENT symptom advisor (YES/NO).
+!              Text is ASCII translit for compatibility with Bab.KBS style.
+! Saved file name: IS.KBS
+
+ENDOFF;
+RUNTIME;
+
+! ACTIONS BLOCK
+ACTIONS
+WOPEN 1,0,0,23,79,2
+ACTIVE 1
+DISPLAY "
+
+
+
+            LOR (ENT Troubleshooter) - Diagnostirovanie LOR zabolevanii
+
+     Otvette na voprosy YES/NO dlya polucheniya predvaritelnogo vyvoda.
+
+                 Press any key to continue~"
+
+WCLOSE 1
+
+   DISPLAY " Welcome to the ENT symptom advisor (ASCII translit)."
+   FIND RECO
+   DISPLAY " Based on the answers you have given,
+   I recommend: {RECO}";
+
+
+! --------- Level 1 (what bothers) -> define MAIN in strict order ---------
+RULE 0-1
+IF       Q1 = YES
+THEN     MAIN = EAR;
+
+RULE 0-2
+IF       Q1 = NO
+         AND Q2 = YES
+THEN     MAIN = THROAT;
+
+RULE 0-3
+IF       Q1 = NO
+         AND Q2 = NO
+         AND Q3 = YES
+THEN     MAIN = NOSE;
+
+RULE 0-4
+IF       Q1 = NO
+         AND Q2 = NO
+         AND Q3 = NO
+THEN     MAIN = NONE;
+
+
+! --------- Branch EAR: skin / discharge / pain / dizziness ---------
+RULE 1-1
+IF       MAIN = EAR
+         AND E1 = YES
+         AND E12 = YES
+THEN     RECO = SINUSIT;
+
+RULE 1-2
+IF       MAIN = EAR
+         AND E1 = YES
+         AND E12 = NO
+         AND E2 = NO
+THEN     RECO = PSORIAZ_EKZEMA;
+
+RULE 1-3
+IF       MAIN = EAR
+         AND E1 = YES
+         AND E12 = NO
+         AND E2 = YES
+         AND E9 = NO
+THEN     RECO = DERMATIT;
+
+RULE 1-4
+IF       MAIN = EAR
+         AND E1 = YES
+         AND E12 = NO
+         AND E2 = YES
+         AND E9 = YES
+         AND E4 = YES
+THEN     RECO = FURUNKUL;
+
+RULE 1-5
+IF       MAIN = EAR
+         AND E1 = YES
+         AND E12 = NO
+         AND E2 = YES
+         AND E9 = YES
+         AND E4 = NO
+         AND E3 = YES
+THEN     RECO = OTOMIKOZ;
+
+RULE 1-6
+IF       MAIN = EAR
+         AND E1 = YES
+         AND E12 = NO
+         AND E2 = YES
+         AND E9 = YES
+         AND E4 = NO
+         AND E3 = NO
+THEN     RECO = NARUZHNYI_OTIT;
+
+RULE 1-7
+IF       MAIN = EAR
+         AND E1 = NO
+         AND E11 = YES
+THEN     RECO = PULPIT;
+
+RULE 1-8
+IF       MAIN = EAR
+         AND E1 = NO
+         AND E11 = NO
+         AND E5 = YES
+         AND E6 = YES
+THEN     RECO = VNUTRENNII_OTIT;
+
+RULE 1-9
+IF       MAIN = EAR
+         AND E1 = NO
+         AND E11 = NO
+         AND E5 = YES
+         AND E6 = NO
+THEN     RECO = VESTIBULYARNYI_NEIRONIT;
+
+RULE 1-10
+IF       MAIN = EAR
+         AND E1 = NO
+         AND E11 = NO
+         AND E5 = NO
+         AND E7 = YES
+THEN     RECO = NEVROLOGIYA_TROINICHNOGO_NERVA;
+
+RULE 1-11
+IF       MAIN = EAR
+         AND E1 = NO
+         AND E11 = NO
+         AND E5 = NO
+         AND E7 = NO
+THEN     RECO = SREDNII_OTIT;
+
+
+! --------- Branch THROAT: fever / swallowing pain / nodes / tonsil pus ---------
+RULE 2-1
+IF       MAIN = THROAT
+         AND T1 = YES
+         AND T3 = YES
+THEN     RECO = ORVI_GRIPP;
+
+RULE 2-2
+IF       MAIN = THROAT
+         AND T1 = YES
+         AND T3 = NO
+         AND T10 = NO
+THEN     RECO = GRIPP;
+
+RULE 2-3
+IF       MAIN = THROAT
+         AND T1 = YES
+         AND T3 = NO
+         AND T10 = YES
+         AND T11 = NO
+THEN     RECO = GRIPP;
+
+RULE 2-4
+IF       MAIN = THROAT
+         AND T1 = YES
+         AND T3 = NO
+         AND T10 = YES
+         AND T11 = YES
+         AND T12 = YES
+THEN     RECO = OSTRYI_TONZILLIT_ANGINA;
+
+RULE 2-5
+IF       MAIN = THROAT
+         AND T1 = YES
+         AND T3 = NO
+         AND T10 = YES
+         AND T11 = YES
+         AND T12 = NO
+THEN     RECO = FARINGIT;
+
+RULE 2-6
+IF       MAIN = THROAT
+         AND T1 = NO
+         AND T4 = YES
+         AND T8 = NO
+THEN     RECO = ORVI;
+
+RULE 2-7
+IF       MAIN = THROAT
+         AND T1 = NO
+         AND T4 = YES
+         AND T8 = YES
+         AND T9 = NO
+THEN     RECO = ORVI;
+
+RULE 2-8
+IF       MAIN = THROAT
+         AND T1 = NO
+         AND T4 = YES
+         AND T8 = YES
+         AND T9 = YES
+         AND T11 = NO
+THEN     RECO = ORVI;
+
+RULE 2-9
+IF       MAIN = THROAT
+         AND T1 = NO
+         AND T4 = YES
+         AND T8 = YES
+         AND T9 = YES
+         AND T11 = YES
+THEN     RECO = FARINGIT;
+
+RULE 2-10
+IF       MAIN = THROAT
+         AND T1 = NO
+         AND T4 = NO
+         AND T5 = NO
+THEN     RECO = ALLERGICHESKAYA_REAKTSIYA;
+
+RULE 2-11
+IF       MAIN = THROAT
+         AND T1 = NO
+         AND T4 = NO
+         AND T5 = YES
+         AND T6 = NO
+THEN     RECO = ORVI;
+
+RULE 2-12
+IF       MAIN = THROAT
+         AND T1 = NO
+         AND T4 = NO
+         AND T5 = YES
+         AND T6 = YES
+         AND T7 = YES
+THEN     RECO = LARINGIT;
+
+RULE 2-13
+IF       MAIN = THROAT
+         AND T1 = NO
+         AND T4 = NO
+         AND T5 = YES
+         AND T6 = YES
+         AND T7 = NO
+THEN     RECO = ORVI;
+
+
+! --------- Branch NOSE: discharge / pain cheeks-forehead / headache patterns ---------
+RULE 3-1
+IF       MAIN = NOSE
+         AND N1 = YES
+         AND N2 = YES
+THEN     RECO = GRIPP;
+
+RULE 3-2
+IF       MAIN = NOSE
+         AND N1 = YES
+         AND N2 = NO
+         AND N3 = YES
+         AND N4 = YES
+         AND N5 = NO
+THEN     RECO = MIGREN;
+
+RULE 3-3
+IF       MAIN = NOSE
+         AND N1 = YES
+         AND N2 = NO
+         AND N3 = YES
+         AND N4 = YES
+         AND N5 = YES
+         AND N6 = YES
+THEN     RECO = FRONTIT;
+
+RULE 3-4
+IF       MAIN = NOSE
+         AND N1 = YES
+         AND N2 = NO
+         AND N3 = YES
+         AND N4 = YES
+         AND N5 = YES
+         AND N6 = NO
+         AND N7 = YES
+THEN     RECO = GAIMORIT;
+
+RULE 3-5
+IF       MAIN = NOSE
+         AND N1 = YES
+         AND N2 = NO
+         AND N3 = YES
+         AND N4 = YES
+         AND N5 = YES
+         AND N6 = NO
+         AND N7 = NO
+THEN     RECO = ETMOIDIT;
+
+RULE 3-6
+IF       MAIN = NOSE
+         AND N1 = YES
+         AND N2 = NO
+         AND N3 = YES
+         AND N4 = NO
+         AND N8 = YES
+THEN     RECO = GIPERTONIYA;
+
+RULE 3-7
+IF       MAIN = NOSE
+         AND N1 = YES
+         AND N2 = NO
+         AND N3 = YES
+         AND N4 = NO
+         AND N8 = NO
+         AND N9 = NO
+THEN     RECO = NEDOMOGANIE;
+
+RULE 3-8
+IF       MAIN = NOSE
+         AND N1 = YES
+         AND N2 = NO
+         AND N3 = YES
+         AND N4 = NO
+         AND N8 = NO
+         AND N9 = YES
+         AND N10 = YES
+THEN     RECO = SFENOIDIT;
+
+RULE 3-9
+IF       MAIN = NOSE
+         AND N1 = YES
+         AND N2 = NO
+         AND N3 = YES
+         AND N4 = NO
+         AND N8 = NO
+         AND N9 = YES
+         AND N10 = NO
+THEN     RECO = OSTEOHONDROZ;
+
+RULE 3-10
+IF       MAIN = NOSE
+         AND N1 = NO
+         AND N2 = YES
+THEN     RECO = ORVI;
+
+RULE 3-11
+IF       MAIN = NOSE
+         AND N1 = NO
+         AND N2 = NO
+         AND N11 = NO
+THEN     RECO = ADENOIDIT;
+
+RULE 3-12
+IF       MAIN = NOSE
+         AND N1 = NO
+         AND N2 = NO
+         AND N11 = YES
+         AND N12 = YES
+THEN     RECO = POLLINOZ;
+
+RULE 3-13
+IF       MAIN = NOSE
+         AND N1 = NO
+         AND N2 = NO
+         AND N11 = YES
+         AND N12 = NO
+         AND N13 = YES
+THEN     RECO = SINUSIT;
+
+RULE 3-14
+IF       MAIN = NOSE
+         AND N1 = NO
+         AND N2 = NO
+         AND N11 = YES
+         AND N12 = NO
+         AND N13 = NO
+THEN     RECO = RINIT;
+
+
+
+! --------- General rule ---------
+RULE 9-1
+IF       MAIN = NONE
+THEN     RECO = K_VRACHU_DLYA_OSMOTRA;
+
+
+! STATEMENTS BLOCK (questions)
+ASK Q1: " Bespokoit ukho/ushi?";
+CHOICES Q1: YES, NO;
+
+ASK Q2: " Bespokoit gorlo?";
+CHOICES Q2: YES, NO;
+
+ASK Q3: " Bespokoit nos?";
+CHOICES Q3: YES, NO;
+
+! EAR: skin/discharge + dizziness/pain
+ASK E1: " Est pokrasnenie i/ili shelushenie kozhi (v oblasti ukha)?";
+CHOICES E1: YES, NO;
+
+ASK E2: " Est ottek?";
+CHOICES E2: YES, NO;
+
+ASK E3: " Vydeleniya spetsificheskogo tsveta (serye, chernye, zheltye)?";
+CHOICES E3: YES, NO;
+
+ASK E4: " Est li gnoynik?";
+CHOICES E4: YES, NO;
+
+ASK E9: " Prisutstvuyut vydeleniya?";
+CHOICES E9: YES, NO;
+
+ASK E12: " Est problemy s nosoglotkoy i/ili vydeleniya?";
+CHOICES E12: YES, NO;
+
+ASK E11: " Prisutstvuet bol v zubah?";
+CHOICES E11: YES, NO;
+
+ASK E5: " Prisutstvuet golovokruzhenie?";
+CHOICES E5: YES, NO;
+
+ASK E6: " Est poterya slukha ili shum v ushakh?";
+CHOICES E6: YES, NO;
+
+ASK E7: " Bol rezkaya (YES) ili postoyannaya (NO)?";
+CHOICES E7: YES, NO;
+
+
+! THROAT: branch exactly as in scheme
+ASK T1: " Ochen vysokaya temperatura?";
+CHOICES T1: YES, NO;
+
+ASK T3: " Prisutstvuet zalozhennost nosa?";
+CHOICES T3: YES, NO;
+
+ASK T10: " Prisutstvuet bol pri glotanii?";
+CHOICES T10: YES, NO;
+
+ASK T11: " Uvelicheny limfouzly?";
+CHOICES T11: YES, NO;
+
+ASK T12: " Prisutstvuet gnoy na mindalinakh?";
+CHOICES T12: YES, NO;
+
+ASK T4: " Kashel suhoi?";
+CHOICES T4: YES, NO;
+
+ASK T8: " Prisutstvuet pershenie v gorle?";
+CHOICES T8: YES, NO;
+
+ASK T9: " Prisutstvuet pokrasnenie slizistoi?";
+CHOICES T9: YES, NO;
+
+ASK T5: " Prisutstvuet 'kom' v gorle?";
+CHOICES T5: YES, NO;
+
+ASK T6: " Golos siplyi?";
+CHOICES T6: YES, NO;
+
+ASK T7: " Chastichnaya ili polnaya poterya golosa?";
+CHOICES T7: YES, NO;
+
+! NOSE: branch exactly as in scheme
+ASK N1: " Temperatura ochen vysokaya?";
+CHOICES N1: YES, NO;
+
+ASK N2: " Prisutstvuet bol v gorle?";
+CHOICES N2: YES, NO;
+
+ASK N3: " Golovnaya bol v oblasti litsa ili zatylka?";
+CHOICES N3: YES, NO;
+
+ASK N4: " Bol v oblasti litsa (YES) ili zatylka (NO)?";
+CHOICES N4: YES, NO;
+
+ASK N5: " Est gnoynye vydeleniya?";
+CHOICES N5: YES, NO;
+
+ASK N6: " Bol v oblasti lba?";
+CHOICES N6: YES, NO;
+
+ASK N7: " Bol v oblasti shchek?";
+CHOICES N7: YES, NO;
+
+ASK N8: " Vysokoe davlenie?";
+CHOICES N8: YES, NO;
+
+ASK N9: " Est bol pri dvizhenii?";
+CHOICES N9: YES, NO;
+
+ASK N10: " Gnoy stekaet v gorlo?";
+CHOICES N10: YES, NO;
+
+ASK N11: " Obilnye vydeleniya iz nosa?";
+CHOICES N11: YES, NO;
+
+ASK N12: " Vydeleniya prozrachnye?";
+CHOICES N12: YES, NO;
+
+ASK N13: " Prisutstvuet bol v oblasti shchek ili lba?";
+CHOICES N13: YES, NO;
+
