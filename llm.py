@@ -287,5 +287,7 @@ def main():
     app = PredictionApp(root)
     root.mainloop()
 
+#pip install git+https://github.com/ibm-granite/granite-tsfm.git
+
 if __name__ == "__main__":
     main()
