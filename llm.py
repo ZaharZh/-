@@ -45,7 +45,7 @@ class PredictionApp:
         title = tk.Label(self.root, text="Интеллектуальная система мониторинга и прогнозирования",
                          font=("Arial", 12, "bold"))
         title.pack(pady=10)
-        subtitle = tk.Label(self.root, text="технического состояния участка трубопровода",
+        subtitle = tk.Label(self.root, text="технического состояния участка трубопровода (по температуре)",
                             font=("Arial", 10))
         subtitle.pack(pady=(0,20))
         
@@ -53,22 +53,13 @@ class PredictionApp:
         input_frame = tk.Frame(self.root)
         input_frame.pack(pady=10)
         
-        self.param_entries = {}
-        param_names = [
-            ("Вибрация, мм/с", "vibration"),
-            ("Давление, МПа", "pressure"),
-            ("Температура, °C", "temperature"),
-            ("Расход нефти, м³/ч", "flow_rate")
-        ]
-        
-        for label_text, param_key in param_names:
-            row = tk.Frame(input_frame)
-            row.pack(pady=5)
-            lbl = tk.Label(row, text=label_text, width=20, anchor="w")
-            lbl.pack(side="left", padx=5)
-            ent = tk.Entry(row, width=15)
-            ent.pack(side="left", padx=5)
-            self.param_entries[param_key] = ent
+        # Только одно поле для температуры
+        row = tk.Frame(input_frame)
+        row.pack(pady=5)
+        lbl = tk.Label(row, text="Температура, °C", width=20, anchor="w")
+        lbl.pack(side="left", padx=5)
+        self.temp_entry = tk.Entry(row, width=15)
+        self.temp_entry.pack(side="left", padx=5)
         
         # Кнопка прогноза
         predict_btn = tk.Button(self.root, text="Спрогнозировать",
@@ -95,57 +86,46 @@ class PredictionApp:
             messagebox.showerror("Ошибка", "Модель не загружена. Проверьте подключение.")
             return
         
-        # Сбор значений
-        current_values = []
-        for key, entry in self.param_entries.items():
-            val_str = entry.get().strip()
-            if not val_str:
-                messagebox.showwarning("Внимание", f"Заполните поле '{key}'")
-                return
-            try:
-                current_values.append(float(val_str))
-            except ValueError:
-                messagebox.showwarning("Внимание", f"Некорректное число в поле '{key}'")
-                return
+        # Сбор значения температуры
+        temp_str = self.temp_entry.get().strip()
+        if not temp_str:
+            messagebox.showwarning("Внимание", "Пожалуйста, введите значение температуры")
+            return
+        try:
+            current_temp = float(temp_str)
+        except ValueError:
+            messagebox.showwarning("Внимание", "Некорректное значение температуры. Введите число.")
+            return
         
         # Создание временного ряда с историей (24 точки) и интерполяция до 512
-        full_series = self.create_series_with_history(current_values)  # форма (24,4)
-        interpolated_series = self.interpolate_to_length(full_series, target_len=512)  # (512,4)
+        full_series = self.create_series_with_history(current_temp)  # форма (24,1)
+        interpolated_series = self.interpolate_to_length(full_series, target_len=512)  # (512,1)
         
         try:
             with torch.no_grad():
-                # Преобразуем в тензор: (1, 512, 4)
+                # Преобразуем в тензор: (1, 512, 1)
                 inputs = torch.tensor(interpolated_series, dtype=torch.float32).unsqueeze(0)
                 outputs = self.model(inputs)
-                # Анализируем результат (здесь используем текущие значения для детального анализа)
-                result = self.analyze_outputs(outputs, current_values)
-                self.display_result(result, current_values)
+                # Анализируем результат
+                result = self.analyze_outputs(outputs, current_temp)
+                self.display_result(result, current_temp)
         except Exception as e:
             messagebox.showerror("Ошибка", f"Ошибка прогноза: {str(e)}")
     
-    def create_series_with_history(self, current_values):
+    def create_series_with_history(self, current_temp):
         """
         Создает синтетический временной ряд из 24 точек.
-        Последняя точка - текущие показания, предыдущие - нормальные значения с шумом.
+        Последняя точка - текущая температура, предыдущие - нормальные значения с шумом.
         """
         np.random.seed(42)
-        param_ranges = {
-            'vibration': {'norm': 2.0, 'threshold': 5.0},
-            'pressure': {'norm': 5.0, 'threshold': 8.0},
-            'temperature': {'norm': 60.0, 'threshold': 90.0},
-            'flow_rate': {'norm': 1000.0, 'threshold': 1200.0}
-        }
-        param_names = ['vibration', 'pressure', 'temperature', 'flow_rate']
-        series = []
-        for i, pname in enumerate(param_names):
-            norm_val = param_ranges[pname]['norm']
-            # 23 исторических значения с шумом
-            hist = np.random.normal(norm_val, norm_val * 0.1, 23)
-            # Добавляем текущее значение (24-я точка)
-            full = np.append(hist, current_values[i])
-            series.append(full)
-        # Транспонируем: (24,4)
-        return np.array(series).T
+        # Нормальное значение температуры (например, 60°C)
+        norm_temp = 60.0
+        # 23 исторических значения с шумом
+        hist = np.random.normal(norm_temp, norm_temp * 0.1, 23)
+        # Добавляем текущее значение (24-я точка)
+        full = np.append(hist, current_temp)
+        # Возвращаем как массив (24,1)
+        return full.reshape(-1, 1)
     
     def interpolate_to_length(self, series, target_len=512):
         """
@@ -162,74 +142,68 @@ class PredictionApp:
             interpolated[:, f] = np.interp(x_new, x_old, series[:, f])
         return interpolated
     
-    def analyze_outputs(self, outputs, current_values):
+    def analyze_outputs(self, outputs, current_temp):
         """Анализ выходов модели (упрощенный, на основе порогов)"""
-        param_names = ['Вибрация', 'Давление', 'Температура', 'Расход нефти']
+        # Пороговые значения для температуры
         thresholds = {
-            'Вибрация': {'normal': 2.0, 'warning': 3.5, 'critical': 5.0},
-            'Давление': {'normal': 5.0, 'warning': 6.5, 'critical': 8.0},
-            'Температура': {'normal': 60.0, 'warning': 75.0, 'critical': 90.0},
-            'Расход нефти': {'normal': 1000.0, 'warning': 1100.0, 'critical': 1200.0}
+            'normal': 60.0,    # Нормальная рабочая температура
+            'warning': 75.0,   # Предупреждение
+            'critical': 90.0   # Критическое значение
         }
-        param_status = []
-        anomaly_count = 0
-        for i, (pname, val) in enumerate(zip(param_names, current_values)):
-            th = thresholds[pname]
-            if val >= th['critical']:
-                status = "Критическое отклонение"
-                anomaly_count += 2
-            elif val >= th['warning']:
-                status = "Предупреждение"
-                anomaly_count += 1
-            elif val <= th['normal'] * 0.5:
-                status = "Аномально низкое значение"
-                anomaly_count += 1
-            else:
-                status = "В норме"
-            param_status.append((pname, val, status))
         
-        if anomaly_count >= 3:
-            overall = "КРИТИЧЕСКИЙ УРОВЕНЬ"
+        # Определение статуса по температуре
+        if current_temp >= thresholds['critical']:
+            status = "Критическое отклонение"
+            anomaly_level = 2
+        elif current_temp >= thresholds['warning']:
+            status = "Предупреждение"
+            anomaly_level = 1
+        elif current_temp <= thresholds['normal'] * 0.5:  # 30°C
+            status = "Аномально низкое значение"
+            anomaly_level = 1
+        else:
+            status = "В норме"
+            anomaly_level = 0
+        
+        # Определение общего статуса системы
+        if anomaly_level >= 2:
+            overall_status = "КРИТИЧЕСКИЙ УРОВЕНЬ"
             recommendation = "НЕМЕДЛЕННО остановить оборудование и провести диагностику!"
             severity = "high"
-        elif anomaly_count >= 2:
-            overall = "ТРЕБУЕТ ВНИМАНИЯ"
+        elif anomaly_level >= 1:
+            overall_status = "ТРЕБУЕТ ВНИМАНИЯ"
             recommendation = "Провести внеплановую проверку, усилить мониторинг"
             severity = "warning"
-        elif anomaly_count >= 1:
-            overall = "ПОТЕНЦИАЛЬНЫЙ РИСК"
-            recommendation = "Планировать ремонт в ближайшее время"
-            severity = "medium"
         else:
-            overall = "НОРМАЛЬНОЕ СОСТОЯНИЕ"
+            overall_status = "НОРМАЛЬНОЕ СОСТОЯНИЕ"
             recommendation = "Продолжить штатный мониторинг"
             severity = "normal"
         
         return {
-            'overall_status': overall,
+            'overall_status': overall_status,
             'recommendation': recommendation,
-            'param_status': param_status,
+            'temperature_value': current_temp,
+            'temperature_status': status,
             'severity': severity,
-            'anomaly_count': anomaly_count
+            'anomaly_level': anomaly_level
         }
     
-    def display_result(self, result, current_values):
+    def display_result(self, result, current_temp):
         self.result_text.delete(1.0, tk.END)
-        icons = {'high':'🔴', 'warning':'🟡', 'medium':'🟠', 'normal':'🟢'}
+        icons = {'high':'🔴', 'warning':'🟡', 'normal':'🟢'}
         icon = icons.get(result['severity'], '⚪')
         self.result_text.insert(tk.END, "="*40 + "\n")
         self.result_text.insert(tk.END, "РЕЗУЛЬТАТ ПРОГНОЗИРОВАНИЯ\n")
         self.result_text.insert(tk.END, "="*40 + "\n\n")
         self.result_text.insert(tk.END, f"{icon} Общий статус: {result['overall_status']}\n\n")
-        self.result_text.insert(tk.END, "Детальный анализ параметров:\n")
+        self.result_text.insert(tk.END, "Детальный анализ параметра:\n")
         self.result_text.insert(tk.END, "-"*30 + "\n")
-        for pname, val, status in result['param_status']:
-            ind = "❌" if "Критическое" in status else ("⚠️" if "Предупреждение" in status or "Аномально" in status else "✅")
-            self.result_text.insert(tk.END, f"{ind} {pname}: {val} → {status}\n")
+        ind = "❌" if "Критическое" in result['temperature_status'] else ("⚠️" if "Предупреждение" in result['temperature_status'] or "Аномально" in result['temperature_status'] else "✅")
+        self.result_text.insert(tk.END, f"{ind} Температура: {current_temp} °C → {result['temperature_status']}\n")
         self.result_text.insert(tk.END, "\nРекомендация:\n" + "-"*30 + "\n")
         self.result_text.insert(tk.END, f"{result['recommendation']}\n\n")
         self.result_text.insert(tk.END, "="*40 + "\n")
-        self.result_text.insert(tk.END, f"Уровень аномалий: {result['anomaly_count']}/8\n")
+        self.result_text.insert(tk.END, f"Уровень аномалии: {result['anomaly_level']}/2\n")
         self.result_text.insert(tk.END, "="*40 + "\n")
 
 def main():
